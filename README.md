@@ -78,7 +78,7 @@ Algunas posibles mejoras que podrías implementar para extender las funcionalida
 - **Almacenamiento en una base de datos**: Para persistir la información de los turnos y poder analizar datos históricos.
 - **Autenticación de usuarios**: Implementar un sistema de autenticación para que solo usuarios registrados puedan solicitar turnos.
 
-  ### Objetivos del Ejercicio:
+### Objetivos del Ejercicio:
 
 1. **Implementar y Comprender la Arquitectura Cliente-Servidor**: Este proyecto se enfoca en la estructura de la aplicación con un enfoque en el cliente. Demuestra cómo se distribuye la funcionalidad entre el cliente (interfaz web) y el servidor (aplicación backend con Express.js), resaltando los principios clave de esta arquitectura esencial para el desarrollo web moderno.
 2. **Aplicar Conceptos de Desarrollo Web**: Utilizar tecnologías web como HTML, CSS y JavaScript para crear una interfaz de usuario interactiva que se comunica con el servidor para la gestión de turnos.
