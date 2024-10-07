@@ -1,0 +1,13 @@
+
+{
+  "name": "sistema-turnos",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de turnos para entidad estatal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
