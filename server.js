@@ -20,17 +20,14 @@ function log(mensaje) {
 function calcularTiempoEspera() {
     const asesoresOcupados = asesores.filter(a => a !== null).length;
     log(`Asesores ocupados: ${asesoresOcupados}`);
-    if (asesoresOcupados < numAsesores) {
+    if (asesoresOcupados.length < numAsesores) {
         log('Hay asesores libres, atención inmediata');
         return 0;
-    } else{
-        log('No hay asesores libres, atención en: ');
     }
     
     const tiempoMinimo = Math.min(...asesoresOcupados);
-    const tiempoEspera = Math.max(0, tiempoMinimo - Date.now());
-    log(`Tiempo mínimo de espera calculado: ${tiempoEspera} ms`);
-    return tiempoEspera;
+    log(`Tiempo mínimo de espera calculado: ${tiempoMinimo} ms`);
+    return Math.max(0, tiempoMinimo - Date.now());
 }
 
 function asignarTurno() {
@@ -38,18 +35,10 @@ function asignarTurno() {
     log(`Buscando asesor libre. Resultado: ${asesorLibre}`);
     if (asesorLibre !== -1) {
         asesores[asesorLibre] = Date.now() + tiempoPorTurno * 60000;
-        log(`Asignado al asesor ${asesorLibre}. Terminará en: ${new Date(asesores[asesorLibre]).toISOString()}`);
-        return 0;
-    } else {
-        const tiempoEspera = calcularTiempoEspera();
-        log(`Todos los asesores ocupados. Tiempo de espera: ${tiempoEspera} ms`);
-        return tiempoEspera;
+        log(`Asignado al asesor ${asesorLibre + 1}. Terminará en: ${new Date(asesores[asesorLibre]).toISOString()}`);
+        return asesorLibre;
     }
-
-let mensajeEspera = data.tiempoEspera !== undefined ? 
-`Tiempo estimado de espera: ${data.tiempoEspera} minutos` : 
-"Hubo un problema con la asignación del turno.";
-
+    return -1;
 }
 
 function actualizarAsesores() {
@@ -57,7 +46,7 @@ function actualizarAsesores() {
     log('Actualizando estado de asesores');
     asesores = asesores.map((a, index) => {
         if (a && a <= ahora) {
-            log(`Asesor ${index} ahora está libre`);
+            log(`Asesor ${index + 1} ahora está libre`);
             return null;
         }
         return a;
@@ -66,9 +55,21 @@ function actualizarAsesores() {
     log(`Estado de la cola: ${cola.length} en espera`);
     while (cola.length > 0 && asesores.includes(null)) {
         const siguiente = cola.shift();
-        log(`Procesando siguiente en cola: Turno ${siguiente.turno}`);
-        const tiempoEspera = asignarTurno();
-        siguiente.callback(tiempoEspera);
+        const asesorAsignado = asignarTurno();
+        if (asesorAsignado !== -1) {
+            log(`Procesando turno ${siguiente.turno} de la cola`);
+            siguiente.res.json({
+                turno: siguiente.turno,
+                nombre: siguiente.nombre,
+                identificacion: siguiente.identificacion,
+                tiempoEspera: 0,
+                enCola: false,
+                asesor: asesorAsignado + 1
+            });
+        } else {
+            cola.unshift(siguiente);
+            break;
+        }
     }
 }
 
@@ -80,23 +81,29 @@ app.post('/solicitar-turno', (req, res) => {
         turnoActual++;
         log(`Nueva solicitud de turno: ${turnoActual} - Nombre: ${nombre}, ID: ${identificacion}`);
         
-        const procesarSolicitud = (tiempoEspera) => {
-            log(`Procesando solicitud para turno ${turnoActual}. Tiempo de espera: ${tiempoEspera} ms`);
+        const asesorAsignado = asignarTurno();
+        if (asesorAsignado !== -1) {
+            log(`Atención inmediata para turno ${turnoActual}`);
             res.json({
                 turno: turnoActual,
                 nombre,
                 identificacion,
-                tiempoEspera: Math.ceil(tiempoEspera / 60000)
+                tiempoEspera: 0,
+                enCola: false,
+                asesor: asesorAsignado + 1
             });
-        };
-        
-        const tiempoEspera = asignarTurno();
-        if (tiempoEspera === 0) {
-            log(`Atención inmediata para turno ${turnoActual}`);
-            procesarSolicitud(0);
         } else {
-            log(`Añadiendo turno ${turnoActual} a la cola. Tiempo estimado: ${tiempoEspera} ms`);
-            cola.push({ turno: turnoActual, callback: procesarSolicitud });
+            const tiempoEspera = calcularTiempoEspera();
+            log(`Añadiendo turno ${turnoActual} a la cola. Tiempo estimado: ${Math.ceil(tiempoEspera / 60000)} minutos`);
+            res.json({
+                turno: turnoActual,
+                nombre,
+                identificacion,
+                tiempoEspera: Math.ceil(tiempoEspera / 60000),
+                enCola: true,
+                posicionCola: cola.length + 1
+            });
+            cola.push({ turno: turnoActual, nombre, identificacion, res });
         }
     } catch (error) {
         log(`Error en la solicitud de turno: ${error.message}`);
@@ -111,9 +118,8 @@ app.get('/estado', (req, res) => {
         asesores: asesores.map(a => a ? 'ocupado' : 'libre'),
         colaLength: cola.length
     });
-
 });
 
 app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
+    console.log(`Servidor corriendo en http://localhost:${port}`);
 });
